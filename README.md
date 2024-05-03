@@ -9,6 +9,27 @@ A simple, embedabble debugger for Lua 5.x, and LuaJIT 2.x.
 
 debugger.lua is a simple, single file, pure Lua debugger that is easy to integrate with any project. The lua-users wiki lists a [number of debuggers](http://lua-users.org/wiki/DebuggingLuaCode). clidebugger was closest to what I was looking for, but I ran into several compatibility issues, and the rest are pretty big libraries with a whole lot of dependencies. I just wanted something simple to integrate that would work through stdin/stdout. I also decided that it sounded fun to try and make my own!
 
+Fork information
+-
+This fork adds support for remote debugging.
+
+```bash
+# (Linenoise is optional)
+luarocks install luv linenoise
+
+./server.lua 127.0.0.1 8777
+DBG_REMOTEPORT=8777 lua ./tutorial.lua
+```
+
+The behaviour of `debugger.lua` should be unchanged if `DBG_REMOTEPORT` is unset.
+Neovim configuration/plugins can be debugged with this approach but there are some issues.
+The 'c(ontinue)' command works but stepping through the code with 'n(ext)' does not work.
+
+```bash
+./server.lua
+DBG_REMOTEPORT=8777 nvim
+```
+
 Features
 -
 

@@ -496,6 +496,9 @@ end
 -- Make the debugger object callable like a function.
 dbg = setmetatable({}, {
 	__call = function(_, condition, top_offset, source)
+        if vim ~= nil and not os.getenv("DBG_REMOTEPORT") then
+            return
+        end
 		if condition then return end
 		
 		top_offset = (top_offset or 0)
@@ -568,6 +571,85 @@ end
 -- Assume stdin/out are TTYs unless we can use LuaJIT's FFI to properly check them.
 local stdin_isatty = true
 local stdout_isatty = true
+
+-- REMOTE DEBUGGER -------------------------------------------------------------
+if os.getenv("DBG_REMOTEPORT") then
+    CLIENT_READY = '\r\r\r\r'
+    local debugger_addr = os.getenv("DBG_REMOTEADDR") or '127.0.0.1'
+    local _, debugger_port = pcall(tonumber, os.getenv("DBG_REMOTEPORT"))
+    if not debugger_port then
+        print("Invalid DBG_REMOTEPORT=" .. os.getenv("DBG_REMOTEPORT"))
+        os.exit(1)
+    end
+    ---@type uv
+    local uv = require('luv')
+    ---@type uv.uv_tcp_t
+    local client
+
+    ---@param addr string
+    ---@param port number
+    local function socket_connect(addr, port)
+        ---@diagnostic disable-next-line: cast-local-type
+        client = uv.new_tcp()
+        ---@diagnostic disable-next-line: param-type-mismatch
+        local _, err = uv.tcp_connect(client, addr, port, function (_) end)
+
+        if err then
+            print(err)
+            os.exit(1)
+        end
+    end
+
+    -- @param errcode number
+    local function socket_exit(errcode)
+        if client ~= nil then
+            client:close()
+            print("Connection closed")
+        end
+        os.exit(errcode)
+    end
+
+    ---@param str string
+    local function dbg_write_socket(str)
+        uv.write(client, str)
+    end
+
+    ---@return string|nil
+    local function dbg_read_socket()
+        -- Send an indicator that we are ready to accept a new command
+        -- Linenoise integration on the server is easier if we do not send the
+        -- actual prompt.
+        dbg_write_socket(CLIENT_READY)
+        local data
+        client:read_start(function(err, chunk)
+            client:read_stop()
+            if err then
+                dbg_write_socket(err)
+                socket_exit(1)
+            else
+                data = chunk
+            end
+        end)
+
+        repeat
+            uv.run('once')
+        until data ~= nil
+
+        return data
+    end
+
+    -- Override tty check to prevent dbg.* methods from being overriden with
+    -- readline alternatives.
+    stdin_isatty = false
+    -- Override IO methods
+    dbg.read = dbg_read_socket
+    dbg.write = dbg_write_socket
+    dbg.exit = socket_exit
+
+    -- Connect to debug server
+    socket_connect(debugger_addr, debugger_port)
+end
+--------------------------------------------------------------------------------
 
 -- Conditionally enable the LuaJIT FFI.
 local ffi = (jit and require("ffi"))
