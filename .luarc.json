@@ -1,0 +1,7 @@
+{
+    "workspace.library": [
+        "/opt/homebrew/share/lua/5.4",
+        "/opt/homebrew/lib/lua/5.4",
+        "${3rd}/luv/library"
+    ]
+}
