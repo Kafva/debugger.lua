@@ -594,7 +594,7 @@ end
 -- Conditionally enable color support.
 local color_maybe_supported = (stdout_isatty and os.getenv("TERM") and os.getenv("TERM") ~= "dumb")
 if color_maybe_supported and not os.getenv("DBG_NOCOLOR") then
-	COLOR_GRAY = string.char(27) .. "[90m"
+	COLOR_GRAY = ""
 	COLOR_RED = string.char(27) .. "[91m"
 	COLOR_BLUE = string.char(27) .. "[94m"
 	COLOR_YELLOW = string.char(27) .. "[33m"
